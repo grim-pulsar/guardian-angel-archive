@@ -30,4 +30,4 @@ And you will not be the last.
 
 ---
 
-> begin with /logs/entry_01.txt
+> begin with [entry_01](./logs/entry_01.txt)
