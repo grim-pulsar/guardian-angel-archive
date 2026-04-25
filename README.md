@@ -30,4 +30,5 @@ And you will not be the last.
 
 ---
 
-> begin with [entry_01](./logs/entry_01.txt)
+> begin with [entry_01](./logs/entry_02.txt)
+> if this is not the first entry you see, do not trust the order.
