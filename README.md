@@ -32,8 +32,6 @@ And you will not be the last.
 
 ---
 
-> begin with [entry_01](./logs/entry_01.txt)
-> if this is not the first entry you see, do not trust the order.
-
-begin with entry_01  
-if this is not the first entry you see, do not trust the order.
+> begin with [entry_01](./logs/entry_01.txt).
+> do not read entry_03.
+> it is not for you.
