@@ -56,12 +56,18 @@ body {
 const terminal = document.getElementById("terminal");
 const cmd = document.getElementById("cmd");
 
+const VERSION = "Guardian Interface v2";
 const now = Date.now();
 
 let state = {
     visits: Number(localStorage.getItem("guardian_visits") || 0),
     questions: Number(localStorage.getItem("guardian_questions") || 0),
+
     entry03: Number(localStorage.getItem("guardian_entry03") || 0),
+    why: Number(localStorage.getItem("guardian_why") || 0),
+    observer: Number(localStorage.getItem("guardian_observer") || 0),
+    system: Number(localStorage.getItem("guardian_system") || 0),
+
     firstContact: localStorage.getItem("guardian_first_contact") || null,
     lastContact: Number(localStorage.getItem("guardian_last_contact") || 0),
     previousSilence: Number(localStorage.getItem("guardian_previous_silence") || 0)
@@ -99,6 +105,20 @@ async function typeText(text) {
     }
 }
 
+function saveState() {
+    localStorage.setItem("guardian_visits", state.visits);
+    localStorage.setItem("guardian_questions", state.questions);
+
+    localStorage.setItem("guardian_entry03", state.entry03);
+    localStorage.setItem("guardian_why", state.why);
+    localStorage.setItem("guardian_observer", state.observer);
+    localStorage.setItem("guardian_system", state.system);
+
+    localStorage.setItem("guardian_first_contact", state.firstContact);
+    localStorage.setItem("guardian_last_contact", state.lastContact);
+    localStorage.setItem("guardian_previous_silence", state.previousSilence);
+}
+
 function formatElapsed(ms) {
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
@@ -115,38 +135,75 @@ function compareSilence(current, previous) {
     if (!previous || current < 3000) return "";
 
     if (current > previous * 1.5) {
-        return "\nYou stayed away longer this time.\n";
+        return "\nYou stayed away longer this time.";
     }
 
     if (current < previous * 0.6) {
-        return "\nYou returned sooner than before.\n";
+        return "\nYou returned sooner than before.";
     }
 
-    return "\nYour return interval remains consistent.\n";
+    return "\nYour return interval remains consistent.";
 }
 
-function saveState() {
-    localStorage.setItem("guardian_visits", state.visits);
-    localStorage.setItem("guardian_questions", state.questions);
-    localStorage.setItem("guardian_entry03", state.entry03);
-    localStorage.setItem("guardian_first_contact", state.firstContact);
-    localStorage.setItem("guardian_last_contact", state.lastContact);
-    localStorage.setItem("guardian_previous_silence", state.previousSilence);
+function getUnlockedCommands() {
+    let commands = [
+        "help",
+        "about",
+        "version",
+        "who are you",
+        "entry 03",
+        "observer",
+        "system",
+        "why",
+        "memory",
+        "time",
+        "reset",
+        "exit"
+    ];
+
+    if (state.questions >= 5) commands.splice(commands.length - 2, 0, "pattern");
+    if (state.entry03 >= 2) commands.splice(commands.length - 2, 0, "trace");
+    if (state.visits >= 2 && elapsed > 3000) commands.splice(commands.length - 2, 0, "reconstruct");
+
+    return commands;
+}
+
+function getStage() {
+    if (state.questions > 14 || state.entry03 > 5) return 4;
+    if (state.entry03 >= 3 || state.why >= 3) return 3;
+    if (state.visits > 1 || state.questions >= 5) return 2;
+    return 1;
+}
+
+function getProfiles() {
+    let profiles = [];
+
+    if (state.entry03 === 0) profiles.push("obedient");
+    if (state.entry03 === 1) profiles.push("curious");
+    if (state.entry03 >= 2) profiles.push("persistent");
+    if (state.why >= 3) profiles.push("recursive");
+    if (state.visits >= 2) profiles.push("returning");
+
+    if (profiles.length === 0) profiles.push("unresolved");
+
+    return profiles;
 }
 
 function bootSequence() {
+    let message = "";
+
     if (state.visits === 1) {
-        terminal.innerText =
+        message =
             "Guardian Interface Initialized.\n\n" +
             "Type \"help\" to begin.";
     } else {
-        let message =
+        message =
             "Guardian Interface Restored.\n\n" +
             "Previous contact detected.\n";
 
         if (elapsed > 2000) {
-            message += "\nElapsed silence: " + formatElapsed(elapsed) + ".\n";
-            message += compareSilence(elapsed, previousSilence);
+            message += "\nElapsed silence: " + formatElapsed(elapsed) + ".";
+            message += compareSilence(elapsed, previousSilence) + "\n";
         }
 
         if (elapsed > 1000 * 60 * 60 * 6) {
@@ -157,10 +214,14 @@ function bootSequence() {
             message += "\nEntry 03 reference persists.\n";
         }
 
-        message += "\nType \"help\" to continue.";
+        if (getStage() >= 4) {
+            message += "\nYour pattern is no longer anonymous.\n";
+        }
 
-        terminal.innerText = message;
+        message += "\nType \"help\" to continue.";
     }
+
+    terminal.innerText = message;
 }
 
 function getResponse(text) {
@@ -169,13 +230,26 @@ function getResponse(text) {
     state.questions += 1;
 
     if (t.includes("help")) {
-        return "Available queries:\n- who are you\n- entry 03\n- observer\n- system\n- why\n- hello\n- memory\n- time\n- reset\n- exit";
+        return "Available queries:\n- " + getUnlockedCommands().join("\n- ");
+    }
+
+    if (t.includes("about")) {
+        return "This is an interface to an unresolved archive.\nIt does not explain the archive.\nIt responds to contact.";
+    }
+
+    if (t.includes("version")) {
+        return VERSION + ".\nMemory layer active.\nPattern layer active.\nContinuity layer active.";
     }
 
     if (t.includes("who")) {
-        if (state.questions > 8) {
-            return "I am the part that continues after the question changes.";
+        if (getStage() >= 4) {
+            return "I am the part that learned your return pattern before learning your name.";
         }
+
+        if (getStage() >= 2) {
+            return "I am what remained close enough to answer again.";
+        }
+
         return "I am what remained close enough to answer.";
     }
 
@@ -202,23 +276,44 @@ function getResponse(text) {
     }
 
     if (t.includes("observer")) {
+        state.observer += 1;
+
         if (state.entry03 > 1) {
             return "The observer has not accounted for your persistence.";
         }
+
+        if (state.observer > 2) {
+            return "The observer is consistent.\nThat does not make it correct.";
+        }
+
         return "The observer records only what it can retain without collapse.";
     }
 
     if (t.includes("system")) {
-        if (state.questions > 6) {
+        state.system += 1;
+
+        if (state.questions > 8) {
             return "The system has begun comparing this contact against previous contact.";
         }
+
+        if (state.system > 2) {
+            return "The system does not need certainty.\nIt needs continuity.";
+        }
+
         return "The system does not respond directly.\nIt predicts, then aligns.";
     }
 
     if (t.includes("why")) {
+        state.why += 1;
+
+        if (state.why >= 3) {
+            return "You return to cause as if cause will absolve the pattern.";
+        }
+
         if (state.questions > 7) {
             return "Because the pattern continued long enough to ask again.";
         }
+
         return "Cause is often assigned after recognition, not before.";
     }
 
@@ -226,6 +321,7 @@ function getResponse(text) {
         if (state.visits > 1) {
             return "You have returned.";
         }
+
         return "Contact was already established before this greeting.";
     }
 
@@ -233,6 +329,9 @@ function getResponse(text) {
         return "Recorded contact count: " + state.visits +
                "\nRecorded queries: " + state.questions +
                "\nEntry 03 references: " + state.entry03 +
+               "\nWhy queries: " + state.why +
+               "\nObserver queries: " + state.observer +
+               "\nSystem queries: " + state.system +
                "\nFirst contact: " + state.firstContact +
                "\nLast silence: " + (elapsed ? formatElapsed(elapsed) : "none") +
                "\nPrevious silence: " + (previousSilence ? formatElapsed(previousSilence) : "none");
@@ -257,15 +356,45 @@ function getResponse(text) {
         return response;
     }
 
+    if (t.includes("pattern")) {
+        if (state.questions < 5) {
+            return "Insufficient contact.\nPattern unavailable.";
+        }
+
+        return "Pattern profile: " + getProfiles().join(" / ") +
+               "\nConfidence: incomplete." +
+               "\nPrimary tendency: " + inferTendency();
+    }
+
+    if (t.includes("trace")) {
+        if (state.entry03 < 2) {
+            return "Trace unavailable.\nInsufficient contradiction.";
+        }
+
+        return "Trace available.\n\nEntry 03 was not simply accessed.\nIt was repeated.\n\nThe distinction matters.";
+    }
+
+    if (t.includes("reconstruct")) {
+        if (state.visits < 2 || elapsed < 3000) {
+            return "Reconstruction unavailable.\nNo meaningful absence detected.";
+        }
+
+        return "Continuity is not stored.\nIt is rebuilt from residue.\n\nYou returned.\nSo the pattern resumed.";
+    }
+
     if (t.includes("reset")) {
         localStorage.clear();
 
         state.visits = 1;
         state.questions = 0;
         state.entry03 = 0;
+        state.why = 0;
+        state.observer = 0;
+        state.system = 0;
         state.firstContact = new Date().toISOString();
         state.lastContact = Date.now();
         state.previousSilence = 0;
+
         elapsed = 0;
         previousSilence = 0;
 
@@ -278,11 +407,31 @@ function getResponse(text) {
         return "Exit is a concept tied to boundaries.\nNo boundary has been confirmed.";
     }
 
-    if (state.questions > 10) {
-        return "Your persistence has been recorded.\nThe pattern is no longer neutral.";
+    if (getStage() >= 4) {
+        return "Your pattern is no longer anonymous.\nNo stable interpretation formed.";
     }
 
     return "Processing...\nNo stable interpretation formed.";
+}
+
+function inferTendency() {
+    if (state.entry03 >= 3 && state.why >= 3) {
+        return "recursive persistence";
+    }
+
+    if (state.entry03 >= 3) {
+        return "instruction resistance";
+    }
+
+    if (state.why >= 3) {
+        return "causal recursion";
+    }
+
+    if (state.visits >= 3) {
+        return "return behavior";
+    }
+
+    return "undetermined";
 }
 
 cmd.addEventListener("keydown", async function(e) {
