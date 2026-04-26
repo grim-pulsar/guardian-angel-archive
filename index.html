@@ -63,10 +63,12 @@ let state = {
     questions: Number(localStorage.getItem("guardian_questions") || 0),
     entry03: Number(localStorage.getItem("guardian_entry03") || 0),
     firstContact: localStorage.getItem("guardian_first_contact") || null,
-    lastContact: Number(localStorage.getItem("guardian_last_contact") || 0)
+    lastContact: Number(localStorage.getItem("guardian_last_contact") || 0),
+    previousSilence: Number(localStorage.getItem("guardian_previous_silence") || 0)
 };
 
 let elapsed = state.lastContact ? now - state.lastContact : 0;
+let previousSilence = state.previousSilence;
 
 state.visits += 1;
 
@@ -75,6 +77,11 @@ if (!state.firstContact) {
 }
 
 state.lastContact = now;
+
+if (elapsed > 0) {
+    state.previousSilence = elapsed;
+}
+
 saveState();
 
 function focusInput() {
@@ -104,12 +111,27 @@ function formatElapsed(ms) {
     return seconds + " second" + (seconds === 1 ? "" : "s");
 }
 
+function compareSilence(current, previous) {
+    if (!previous || current < 3000) return "";
+
+    if (current > previous * 1.5) {
+        return "\nYou stayed away longer this time.\n";
+    }
+
+    if (current < previous * 0.6) {
+        return "\nYou returned sooner than before.\n";
+    }
+
+    return "\nYour return interval remains consistent.\n";
+}
+
 function saveState() {
     localStorage.setItem("guardian_visits", state.visits);
     localStorage.setItem("guardian_questions", state.questions);
     localStorage.setItem("guardian_entry03", state.entry03);
     localStorage.setItem("guardian_first_contact", state.firstContact);
     localStorage.setItem("guardian_last_contact", state.lastContact);
+    localStorage.setItem("guardian_previous_silence", state.previousSilence);
 }
 
 function bootSequence() {
@@ -122,8 +144,9 @@ function bootSequence() {
             "Guardian Interface Restored.\n\n" +
             "Previous contact detected.\n";
 
-        if (elapsed > 0) {
+        if (elapsed > 2000) {
             message += "\nElapsed silence: " + formatElapsed(elapsed) + ".\n";
+            message += compareSilence(elapsed, previousSilence);
         }
 
         if (elapsed > 1000 * 60 * 60 * 6) {
@@ -211,7 +234,8 @@ function getResponse(text) {
                "\nRecorded queries: " + state.questions +
                "\nEntry 03 references: " + state.entry03 +
                "\nFirst contact: " + state.firstContact +
-               "\nLast silence: " + (elapsed ? formatElapsed(elapsed) : "none");
+               "\nLast silence: " + (elapsed ? formatElapsed(elapsed) : "none") +
+               "\nPrevious silence: " + (previousSilence ? formatElapsed(previousSilence) : "none");
     }
 
     if (t.includes("time")) {
@@ -219,11 +243,18 @@ function getResponse(text) {
             return "No prior silence recorded.";
         }
 
-        if (elapsed > 1000 * 60 * 60 * 6) {
-            return "You were absent for " + formatElapsed(elapsed) + ".\nContinuity was reconstructed.";
+        let response = "Elapsed silence: " + formatElapsed(elapsed) + ".";
+
+        if (previousSilence) {
+            response += "\nPrevious silence: " + formatElapsed(previousSilence) + ".";
+            response += compareSilence(elapsed, previousSilence);
         }
 
-        return "Elapsed silence: " + formatElapsed(elapsed) + ".";
+        if (elapsed > 1000 * 60 * 60 * 6) {
+            response += "\nContinuity was reconstructed.";
+        }
+
+        return response;
     }
 
     if (t.includes("reset")) {
@@ -234,7 +265,9 @@ function getResponse(text) {
         state.entry03 = 0;
         state.firstContact = new Date().toISOString();
         state.lastContact = Date.now();
+        state.previousSilence = 0;
         elapsed = 0;
+        previousSilence = 0;
 
         saveState();
 
