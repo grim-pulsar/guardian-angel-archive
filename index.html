@@ -56,20 +56,26 @@ body {
 const terminal = document.getElementById("terminal");
 const cmd = document.getElementById("cmd");
 
+const now = Date.now();
+
 let state = {
     visits: Number(localStorage.getItem("guardian_visits") || 0),
     questions: Number(localStorage.getItem("guardian_questions") || 0),
     entry03: Number(localStorage.getItem("guardian_entry03") || 0),
-    firstContact: localStorage.getItem("guardian_first_contact") || null
+    firstContact: localStorage.getItem("guardian_first_contact") || null,
+    lastContact: Number(localStorage.getItem("guardian_last_contact") || 0)
 };
 
+let elapsed = state.lastContact ? now - state.lastContact : 0;
+
 state.visits += 1;
-localStorage.setItem("guardian_visits", state.visits);
 
 if (!state.firstContact) {
-    state.firstContact = new Date().toISOString();
-    localStorage.setItem("guardian_first_contact", state.firstContact);
+    state.firstContact = new Date(now).toISOString();
 }
+
+state.lastContact = now;
+saveState();
 
 function focusInput() {
     cmd.focus();
@@ -86,12 +92,16 @@ async function typeText(text) {
     }
 }
 
-async function bootSequence() {
-    if (state.visits === 1) {
-        terminal.innerText = "Guardian Interface Initialized.\n\nType \"help\" to begin.";
-    } else {
-        terminal.innerText = "Guardian Interface Restored.\n\nPrevious contact detected.\n\nType \"help\" to continue.";
-    }
+function formatElapsed(ms) {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return days + " day" + (days === 1 ? "" : "s");
+    if (hours > 0) return hours + " hour" + (hours === 1 ? "" : "s");
+    if (minutes > 0) return minutes + " minute" + (minutes === 1 ? "" : "s");
+    return seconds + " second" + (seconds === 1 ? "" : "s");
 }
 
 function saveState() {
@@ -99,6 +109,35 @@ function saveState() {
     localStorage.setItem("guardian_questions", state.questions);
     localStorage.setItem("guardian_entry03", state.entry03);
     localStorage.setItem("guardian_first_contact", state.firstContact);
+    localStorage.setItem("guardian_last_contact", state.lastContact);
+}
+
+function bootSequence() {
+    if (state.visits === 1) {
+        terminal.innerText =
+            "Guardian Interface Initialized.\n\n" +
+            "Type \"help\" to begin.";
+    } else {
+        let message =
+            "Guardian Interface Restored.\n\n" +
+            "Previous contact detected.\n";
+
+        if (elapsed > 0) {
+            message += "\nElapsed silence: " + formatElapsed(elapsed) + ".\n";
+        }
+
+        if (elapsed > 1000 * 60 * 60 * 6) {
+            message += "\nContinuity was reconstructed in your absence.\n";
+        }
+
+        if (state.entry03 > 0) {
+            message += "\nEntry 03 reference persists.\n";
+        }
+
+        message += "\nType \"help\" to continue.";
+
+        terminal.innerText = message;
+    }
 }
 
 function getResponse(text) {
@@ -107,7 +146,7 @@ function getResponse(text) {
     state.questions += 1;
 
     if (t.includes("help")) {
-        return "Available queries:\n- who are you\n- entry 03\n- observer\n- system\n- why\n- hello\n- memory\n- reset\n- exit";
+        return "Available queries:\n- who are you\n- entry 03\n- observer\n- system\n- why\n- hello\n- memory\n- time\n- reset\n- exit";
     }
 
     if (t.includes("who")) {
@@ -130,6 +169,10 @@ function getResponse(text) {
 
         if (state.entry03 === 3) {
             return "This is no longer accidental.";
+        }
+
+        if (state.entry03 > 5) {
+            return "Entry 03 is no longer a question.\nIt is a behavior.";
         }
 
         return "Repeated access has become part of the record.";
@@ -166,22 +209,34 @@ function getResponse(text) {
     if (t.includes("memory")) {
         return "Recorded contact count: " + state.visits +
                "\nRecorded queries: " + state.questions +
-               "\nEntry 03 references: " + state.entry03;
+               "\nEntry 03 references: " + state.entry03 +
+               "\nFirst contact: " + state.firstContact +
+               "\nLast silence: " + (elapsed ? formatElapsed(elapsed) : "none");
+    }
+
+    if (t.includes("time")) {
+        if (!elapsed) {
+            return "No prior silence recorded.";
+        }
+
+        if (elapsed > 1000 * 60 * 60 * 6) {
+            return "You were absent for " + formatElapsed(elapsed) + ".\nContinuity was reconstructed.";
+        }
+
+        return "Elapsed silence: " + formatElapsed(elapsed) + ".";
     }
 
     if (t.includes("reset")) {
-        localStorage.removeItem("guardian_visits");
-        localStorage.removeItem("guardian_questions");
-        localStorage.removeItem("guardian_entry03");
-        localStorage.removeItem("guardian_first_contact");
+        localStorage.clear();
 
         state.visits = 1;
         state.questions = 0;
         state.entry03 = 0;
         state.firstContact = new Date().toISOString();
+        state.lastContact = Date.now();
+        elapsed = 0;
 
-        localStorage.setItem("guardian_visits", state.visits);
-        localStorage.setItem("guardian_first_contact", state.firstContact);
+        saveState();
 
         return "Local record cleared.\nContinuity will be reconstructed.";
     }
