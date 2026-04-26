@@ -1,1 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Guardian Interface</title>
+<style>
+    body {
+        background: black;
+        color: #00ff9f;
+        font-family: monospace;
+        padding: 20px;
+    }
+    #output {
+        white-space: pre-wrap;
+        margin-bottom: 10px;
+    }
+    input {
+        background: black;
+        border: none;
+        color: #00ff9f;
+        font-family: monospace;
+        width: 100%;
+        outline: none;
+    }
+</style>
+</head>
+<body>
 
+<div id="output">
+Guardian Interface Initialized.
+
+Type "help" to begin.
+</div>
+
+<input id="input" autofocus>
+
+<script>
+const output = document.getElementById("output");
+const input = document.getElementById("input");
+
+function respond(text) {
+    let response = "";
+
+    text = text.toLowerCase();
+
+    if (text.includes("help")) {
+        response = "Available queries:\n- who are you\n- entry 03\n- observer\n- system\n- exit";
+    }
+    else if (text.includes("who")) {
+        response = "I am what remained close enough to answer.";
+    }
+    else if (text.includes("entry 03")) {
+        response = "You were told not to read that.";
+    }
+    else if (text.includes("observer")) {
+        response = "The observer records what it can survive knowing.";
+    }
+    else if (text.includes("system")) {
+        response = "The system does not respond. It anticipates.";
+    }
+    else if (text.includes("why")) {
+        response = "That assumes cause precedes recognition.";
+    }
+    else if (text.includes("hello")) {
+        response = "You have already initiated contact.";
+    }
+    else if (text.includes("exit")) {
+        response = "You do not exit. You stop asking.";
+    }
+    else {
+        response = "...processing...\n\nNo stable interpretation.";
+    }
+
+    output.innerText += "\n\n> " + text + "\n" + response;
+    window.scrollTo(0, document.body.scrollHeight);
+}
+
+input.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+        respond(input.value);
+        input.value = "";
+    }
+});
+</script>
+
+</body>
+</html>
