@@ -3,50 +3,53 @@
 <head>
 <meta charset="UTF-8">
 <title>Guardian Interface</title>
+
 <style>
-    html, body {
-        margin: 0;
-        min-height: 100%;
-        background: black;
-        color: #00ff9f;
-        font-family: monospace;
-        font-size: 15px;
-    }
+html, body {
+    margin: 0;
+    background: black;
+    color: #00ff9f;
+    font-family: monospace;
+    font-size: 15px;
+}
 
-    body {
-        padding: 28px;
-    }
+body {
+    padding: 28px;
+}
 
-    #terminal {
-        white-space: pre-wrap;
-        line-height: 1.6;
-    }
+#terminal {
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
 
-    #inputLine {
-        display: flex;
-        margin-top: 18px;
-    }
+#inputLine {
+    display: flex;
+    margin-top: 18px;
+}
 
-    #prompt {
-        margin-right: 8px;
-    }
+#prompt {
+    margin-right: 8px;
+}
 
-    #cmd {
-        background: black;
-        border: none;
-        color: #00ff9f;
-        font-family: monospace;
-        font-size: 15px;
-        outline: none;
-        flex: 1;
-    }
+#cmd {
+    background: black;
+    border: none;
+    color: #00ff9f;
+    font-family: monospace;
+    font-size: 15px;
+    outline: none;
+    flex: 1;
+}
 </style>
 </head>
+
 <body onclick="focusInput()">
 
-<div id="terminal">Guardian Interface Initialized.
+<div id="terminal">
+Guardian Interface Initialized.
 
-Type "help" to begin.</div>
+Type "help" to begin.
+</div>
 
 <div id="inputLine">
     <span id="prompt">&gt;</span>
@@ -57,14 +60,27 @@ Type "help" to begin.</div>
 const terminal = document.getElementById("terminal");
 const cmd = document.getElementById("cmd");
 
+let memory = {};
+let questionCount = 0;
+
 function focusInput() {
     cmd.focus();
 }
 
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function typeText(text) {
+    for (let i = 0; i < text.length; i++) {
+        terminal.innerText += text[i];
+        await delay(12 + Math.random() * 20);
+    }
+}
+
 function getResponse(text) {
     const t = text.toLowerCase().trim();
-
-    if (t === "") return "";
+    questionCount++;
 
     if (t.includes("help")) {
         return "Available queries:\n- who are you\n- entry 03\n- observer\n- system\n- why\n- hello\n- exit";
@@ -75,42 +91,56 @@ function getResponse(text) {
     }
 
     if (t.includes("entry 03")) {
-        return "You were told not to read that.";
+        if (!memory.entry03) {
+            memory.entry03 = true;
+            return "You were advised not to access that entry.";
+        } else {
+            return "You are continuing despite prior instruction.";
+        }
     }
 
     if (t.includes("observer")) {
-        return "The observer records what it can survive knowing.";
+        return "The observer records only what it can retain without collapse.";
     }
 
     if (t.includes("system")) {
-        return "The system does not respond.\nIt anticipates.";
+        return "The system does not respond directly.\nIt predicts, then aligns.";
     }
 
     if (t.includes("why")) {
-        return "That assumes cause precedes recognition.";
+        return "Cause is often assigned after recognition, not before.";
     }
 
     if (t.includes("hello")) {
-        return "You have already initiated contact.";
+        return "Contact was already established before this greeting.";
     }
 
     if (t.includes("exit")) {
-        return "You do not exit.\nYou stop asking.";
+        return "Exit is a concept tied to boundaries.\nNo boundary has been confirmed.";
     }
 
-    return "...processing...\n\nNo stable interpretation.";
+    if (questionCount > 6) {
+        return "You are asking with increasing persistence.\nThe pattern is noted.";
+    }
+
+    return "Processing...\nNo stable interpretation formed.";
 }
 
-cmd.addEventListener("keydown", function(e) {
+cmd.addEventListener("keydown", async function(e) {
     if (e.key === "Enter") {
         const text = cmd.value;
+        if (text.trim() === "") return;
+
+        terminal.innerText += "\n\n> " + text;
+        cmd.value = "";
+
+        await delay(400 + Math.random() * 600);
+
         const response = getResponse(text);
 
-        if (text.trim() !== "") {
-            terminal.innerText += "\n\n> " + text + "\n" + response;
-        }
+        terminal.innerText += "\n";
+        await typeText(response);
 
-        cmd.value = "";
         window.scrollTo(0, document.body.scrollHeight);
     }
 });
