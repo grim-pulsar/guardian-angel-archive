@@ -169,6 +169,7 @@ The subject appears to maintain consistent thought progression between entries.
 No reset or reconstruction behavior detected.
 
 Minor inconsistencies have been observed.
+They do not affect the conclusion.
 ---
 
 If it contains a statement claiming access occurred,
