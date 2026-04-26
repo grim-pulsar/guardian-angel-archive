@@ -69,3 +69,26 @@ I checked.
 If it was added,
 
 it was not added now.
+
+---
+
+This entry has been accessed.
+
+That was not part of the original record.
+
+---
+
+No corresponding action has been logged.
+
+---
+
+The system did not respond.
+
+---
+
+This should not be possible.
+---
+
+I will continue documenting.
+
+Until instructed otherwise.
