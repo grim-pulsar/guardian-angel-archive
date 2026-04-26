@@ -1,7 +1,7 @@
-# guardian-angel-archive
-> A system that learns you.
-> Not who you are.
+> A system that learns you.␣␣  
+> Not who you are.␣␣  
 > But how you think.
+
 > archived fragments — source unresolved
 
 ---
