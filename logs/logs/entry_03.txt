@@ -57,3 +57,15 @@ I am going to stop writing after this entry.
 If another one appears—
 
 It is not me.
+
+---
+
+This entry was not in the folder yesterday.
+
+I checked.
+
+---
+
+If it was added,
+
+it was not added now.
