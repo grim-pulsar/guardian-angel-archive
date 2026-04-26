@@ -195,3 +195,15 @@ At this stage.
 ---
 
 Continue observation.
+
+---
+
+[ARCHIVE INTEGRITY]
+
+The record remains consistent with previous conclusions.
+
+---
+
+If discrepancies are present,
+
+they originate from the record itself.
