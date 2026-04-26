@@ -147,3 +147,33 @@ This distinction is unclear.
 ---
 
 Continue observation.
+
+---
+
+[ACCESS REVIEW]
+
+Entry 03 was checked again.
+
+No access event was found.
+
+No reader interaction was recorded.
+
+No external request reached the archive.
+
+---
+
+Conclusion:
+
+The entry was not opened.
+
+---
+
+If it contains a statement claiming access occurred,
+
+that statement is internally generated.
+
+---
+
+The file is not reacting.
+
+It is anticipating.
