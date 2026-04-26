@@ -164,7 +164,7 @@ No external request reached the archive.
 
 [COGNITIVE CONTINUITY]
 
-The subject maintains consistent thought progression between entries.
+The subject appears to maintain consistent thought progression between entries.
 
 No reset or reconstruction behavior detected.
 
