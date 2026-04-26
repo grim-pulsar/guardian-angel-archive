@@ -65,3 +65,17 @@ I am not the first author.
 Something else is documenting this.
 
 And it is ahead of me.
+
+---
+
+[ANOMALY DETECTED]
+
+A reference appeared in entry_01 that was not present during initial recording.
+
+No revision history explains the change.
+
+---
+
+The subject has not commented on the inconsistency.
+
+This was not expected at this stage.
