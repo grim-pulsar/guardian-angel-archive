@@ -433,7 +433,21 @@ function inferTendency() {
 
     return "undetermined";
 }
+const audioMap = {
+    "entry_01": new Audio("audio/entry_01.wav"),
+    "entry_02": new Audio("audio/entry_02.wav"),
+    "entry_03": new Audio("audio/entry_03.wav"),
+    "entry_04": new Audio("audio/entry_04.wav"),
+    "entry_05": new Audio("audio/entry_05.wav")
+};
 
+function playEntryAudio(text) {
+    if (text.includes("shore")) audioMap.entry_01.play();
+    else if (text.includes("memory")) audioMap.entry_02.play();
+    else if (text.includes("prediction")) audioMap.entry_03.play();
+    else if (text.includes("mistake")) audioMap.entry_04.play();
+    else if (text.includes("rescue")) audioMap.entry_05.play();
+}
 cmd.addEventListener("keydown", async function(e) {
     if (e.key === "Enter") {
         const text = cmd.value;
@@ -448,8 +462,8 @@ cmd.addEventListener("keydown", async function(e) {
         saveState();
 
         terminal.innerText += "\n";
-        await typeText(response);
-
+        playEntryAudio(response);
+        
         window.scrollTo(0, document.body.scrollHeight);
     }
 });
