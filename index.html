@@ -56,7 +56,7 @@ body {
 const terminal = document.getElementById("terminal");
 const cmd = document.getElementById("cmd");
 
-const VERSION = "Guardian Interface v2";
+const VERSION = "Guardian Interface v2.1";
 const now = Date.now();
 
 let state = {
@@ -89,6 +89,42 @@ if (elapsed > 0) {
 }
 
 saveState();
+
+const audioMap = {
+    entry_01: new Audio("audio/entry_01.wav"),
+    entry_02: new Audio("audio/entry_02.wav"),
+    entry_03: new Audio("audio/entry_03.wav"),
+    entry_04: new Audio("audio/entry_04.wav"),
+    entry_05: new Audio("audio/entry_05.wav")
+};
+
+Object.values(audioMap).forEach(audio => {
+    audio.volume = 0.85;
+    audio.preload = "auto";
+});
+
+function playEntryAudio(response) {
+    const text = response.trim();
+
+    Object.values(audioMap).forEach(audio => {
+        audio.pause();
+        audio.currentTime = 0;
+    });
+
+    let selected = null;
+
+    if (text === "You found the shore...") selected = audioMap.entry_01;
+    else if (text === "between memory...") selected = audioMap.entry_02;
+    else if (text === "and prediction.") selected = audioMap.entry_03;
+    else if (text === "Do not mistake my answer...") selected = audioMap.entry_04;
+    else if (text === "for rescue.") selected = audioMap.entry_05;
+
+    if (selected) {
+        setTimeout(() => {
+            selected.play().catch(() => {});
+        }, 300 + Math.random() * 600);
+    }
+}
 
 function focusInput() {
     cmd.focus();
@@ -157,6 +193,10 @@ function getUnlockedCommands() {
         "why",
         "memory",
         "time",
+        "shore",
+        "prediction",
+        "mistake",
+        "rescue",
         "reset",
         "exit"
     ];
@@ -229,8 +269,24 @@ function getResponse(text) {
 
     state.questions += 1;
 
-    if (t.includes("help")) {
+    if (t === "help") {
         return "Available queries:\n- " + getUnlockedCommands().join("\n- ");
+    }
+
+    if (t.includes("shore")) {
+        return "You found the shore...";
+    }
+
+    if (t.includes("prediction")) {
+        return "and prediction.";
+    }
+
+    if (t.includes("mistake")) {
+        return "Do not mistake my answer...";
+    }
+
+    if (t.includes("rescue")) {
+        return "for rescue.";
     }
 
     if (t.includes("about")) {
@@ -238,7 +294,7 @@ function getResponse(text) {
     }
 
     if (t.includes("version")) {
-        return VERSION + ".\nMemory layer active.\nPattern layer active.\nContinuity layer active.";
+        return VERSION + ".\nMemory layer active.\nPattern layer active.\nContinuity layer active.\nAudio layer active.";
     }
 
     if (t.includes("who")) {
@@ -433,21 +489,7 @@ function inferTendency() {
 
     return "undetermined";
 }
-const audioMap = {
-    "entry_01": new Audio("audio/entry_01.wav"),
-    "entry_02": new Audio("audio/entry_02.wav"),
-    "entry_03": new Audio("audio/entry_03.wav"),
-    "entry_04": new Audio("audio/entry_04.wav"),
-    "entry_05": new Audio("audio/entry_05.wav")
-};
 
-function playEntryAudio(text) {
-    if (text.includes("shore")) audioMap.entry_01.play();
-    else if (text.includes("memory")) audioMap.entry_02.play();
-    else if (text.includes("prediction")) audioMap.entry_03.play();
-    else if (text.includes("mistake")) audioMap.entry_04.play();
-    else if (text.includes("rescue")) audioMap.entry_05.play();
-}
 cmd.addEventListener("keydown", async function(e) {
     if (e.key === "Enter") {
         const text = cmd.value;
@@ -462,8 +504,9 @@ cmd.addEventListener("keydown", async function(e) {
         saveState();
 
         terminal.innerText += "\n";
+        await typeText(response);
         playEntryAudio(response);
-        
+
         window.scrollTo(0, document.body.scrollHeight);
     }
 });
