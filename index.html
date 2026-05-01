@@ -56,18 +56,16 @@ body {
 const terminal = document.getElementById("terminal");
 const cmd = document.getElementById("cmd");
 
-const VERSION = "Guardian Interface v2.1";
+const VERSION = "Guardian Interface v2.3";
 const now = Date.now();
 
 let state = {
     visits: Number(localStorage.getItem("guardian_visits") || 0),
     questions: Number(localStorage.getItem("guardian_questions") || 0),
-
     entry03: Number(localStorage.getItem("guardian_entry03") || 0),
     why: Number(localStorage.getItem("guardian_why") || 0),
     observer: Number(localStorage.getItem("guardian_observer") || 0),
     system: Number(localStorage.getItem("guardian_system") || 0),
-
     firstContact: localStorage.getItem("guardian_first_contact") || null,
     lastContact: Number(localStorage.getItem("guardian_last_contact") || 0),
     previousSilence: Number(localStorage.getItem("guardian_previous_silence") || 0)
@@ -106,24 +104,29 @@ Object.values(audioMap).forEach(audio => {
 function playEntryAudio(response) {
     const text = response.trim();
 
+    const key =
+        text === "You found the shore..." ? "entry_01" :
+        text === "between memory..." ? "entry_02" :
+        text === "and prediction." ? "entry_03" :
+        text === "Do not mistake my answer..." ? "entry_04" :
+        text === "for rescue." ? "entry_05" :
+        null;
+
+    if (!key) return;
+
+    const alreadyPlayed = localStorage.getItem("audio_played_" + key);
+    if (alreadyPlayed) return;
+
+    localStorage.setItem("audio_played_" + key, "true");
+
     Object.values(audioMap).forEach(audio => {
         audio.pause();
         audio.currentTime = 0;
     });
 
-    let selected = null;
-
-    if (text === "You found the shore...") selected = audioMap.entry_01;
-    else if (text === "between memory...") selected = audioMap.entry_02;
-    else if (text === "and prediction.") selected = audioMap.entry_03;
-    else if (text === "Do not mistake my answer...") selected = audioMap.entry_04;
-    else if (text === "for rescue.") selected = audioMap.entry_05;
-
-    if (selected) {
-        setTimeout(() => {
-            selected.play().catch(() => {});
-        }, 300 + Math.random() * 600);
-    }
+    setTimeout(() => {
+        audioMap[key].play().catch(() => {});
+    }, 500 + Math.random() * 900);
 }
 
 function focusInput() {
@@ -144,12 +147,10 @@ async function typeText(text) {
 function saveState() {
     localStorage.setItem("guardian_visits", state.visits);
     localStorage.setItem("guardian_questions", state.questions);
-
     localStorage.setItem("guardian_entry03", state.entry03);
     localStorage.setItem("guardian_why", state.why);
     localStorage.setItem("guardian_observer", state.observer);
     localStorage.setItem("guardian_system", state.system);
-
     localStorage.setItem("guardian_first_contact", state.firstContact);
     localStorage.setItem("guardian_last_contact", state.lastContact);
     localStorage.setItem("guardian_previous_silence", state.previousSilence);
@@ -191,12 +192,13 @@ function getUnlockedCommands() {
         "observer",
         "system",
         "why",
-        "memory",
-        "time",
         "shore",
+        "between memory",
         "prediction",
         "mistake",
         "rescue",
+        "memory",
+        "time",
         "reset",
         "exit"
     ];
@@ -273,21 +275,11 @@ function getResponse(text) {
         return "Available queries:\n- " + getUnlockedCommands().join("\n- ");
     }
 
-    if (t.includes("shore")) {
-        return "You found the shore...";
-    }
-
-    if (t.includes("prediction")) {
-        return "and prediction.";
-    }
-
-    if (t.includes("mistake")) {
-        return "Do not mistake my answer...";
-    }
-
-    if (t.includes("rescue")) {
-        return "for rescue.";
-    }
+    if (t === "shore") return "You found the shore...";
+    if (t === "between memory") return "between memory...";
+    if (t === "prediction") return "and prediction.";
+    if (t === "mistake") return "Do not mistake my answer...";
+    if (t === "rescue") return "for rescue.";
 
     if (t.includes("about")) {
         return "This is an interface to an unresolved archive.\nIt does not explain the archive.\nIt responds to contact.";
@@ -381,7 +373,7 @@ function getResponse(text) {
         return "Contact was already established before this greeting.";
     }
 
-    if (t.includes("memory")) {
+    if (t === "memory") {
         return "Recorded contact count: " + state.visits +
                "\nRecorded queries: " + state.questions +
                "\nEntry 03 references: " + state.entry03 +
@@ -440,23 +432,8 @@ function getResponse(text) {
 
     if (t.includes("reset")) {
         localStorage.clear();
-
-        state.visits = 1;
-        state.questions = 0;
-        state.entry03 = 0;
-        state.why = 0;
-        state.observer = 0;
-        state.system = 0;
-        state.firstContact = new Date().toISOString();
-        state.lastContact = Date.now();
-        state.previousSilence = 0;
-
-        elapsed = 0;
-        previousSilence = 0;
-
-        saveState();
-
-        return "Local record cleared.\nContinuity will be reconstructed.";
+        location.reload();
+        return "Resetting...";
     }
 
     if (t.includes("exit")) {
