@@ -56,16 +56,20 @@ body {
 const terminal = document.getElementById("terminal");
 const cmd = document.getElementById("cmd");
 
-const VERSION = "Guardian Interface v2.3";
+const VERSION = "Guardian Interface v2.4";
 const now = Date.now();
 
 let state = {
     visits: Number(localStorage.getItem("guardian_visits") || 0),
     questions: Number(localStorage.getItem("guardian_questions") || 0),
+    help: Number(localStorage.getItem("guardian_help") || 0),
+
     entry03: Number(localStorage.getItem("guardian_entry03") || 0),
     why: Number(localStorage.getItem("guardian_why") || 0),
     observer: Number(localStorage.getItem("guardian_observer") || 0),
     system: Number(localStorage.getItem("guardian_system") || 0),
+    cassandra: Number(localStorage.getItem("guardian_cassandra") || 0),
+
     firstContact: localStorage.getItem("guardian_first_contact") || null,
     lastContact: Number(localStorage.getItem("guardian_last_contact") || 0),
     previousSilence: Number(localStorage.getItem("guardian_previous_silence") || 0)
@@ -101,6 +105,161 @@ Object.values(audioMap).forEach(audio => {
     audio.preload = "auto";
 });
 
+function focusInput() {
+    cmd.focus();
+}
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function typeText(text) {
+    for (let i = 0; i < text.length; i++) {
+        terminal.innerText += text[i];
+        await delay(12 + Math.random() * 18);
+    }
+}
+
+function saveState() {
+    localStorage.setItem("guardian_visits", state.visits);
+    localStorage.setItem("guardian_questions", state.questions);
+    localStorage.setItem("guardian_help", state.help);
+
+    localStorage.setItem("guardian_entry03", state.entry03);
+    localStorage.setItem("guardian_why", state.why);
+    localStorage.setItem("guardian_observer", state.observer);
+    localStorage.setItem("guardian_system", state.system);
+    localStorage.setItem("guardian_cassandra", state.cassandra);
+
+    localStorage.setItem("guardian_first_contact", state.firstContact);
+    localStorage.setItem("guardian_last_contact", state.lastContact);
+    localStorage.setItem("guardian_previous_silence", state.previousSilence);
+}
+
+function formatElapsed(ms) {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return days + " day" + (days === 1 ? "" : "s");
+    if (hours > 0) return hours + " hour" + (hours === 1 ? "" : "s");
+    if (minutes > 0) return minutes + " minute" + (minutes === 1 ? "" : "s");
+    return seconds + " second" + (seconds === 1 ? "" : "s");
+}
+
+function compareSilence(current, previous) {
+    if (!previous || current < 3000) return "";
+
+    if (current > previous * 1.5) return "\nYou stayed away longer this time.";
+    if (current < previous * 0.6) return "\nYou returned sooner than before.";
+
+    return "\nYour return interval remains consistent.";
+}
+
+function getStage() {
+    if (state.questions > 18 || state.entry03 > 5 || state.cassandra > 0) return 4;
+    if (state.entry03 >= 3 || state.why >= 3) return 3;
+    if (state.visits > 1 || state.questions >= 5) return 2;
+    return 1;
+}
+
+function getProfiles() {
+    let profiles = [];
+
+    if (state.entry03 === 0) profiles.push("obedient");
+    if (state.entry03 === 1) profiles.push("curious");
+    if (state.entry03 >= 2) profiles.push("persistent");
+    if (state.why >= 3) profiles.push("recursive");
+    if (state.visits >= 2) profiles.push("returning");
+    if (state.cassandra > 0) profiles.push("contact-seeking");
+
+    if (profiles.length === 0) profiles.push("unresolved");
+
+    return profiles;
+}
+
+function inferTendency() {
+    if (state.cassandra > 0) return "contact fixation";
+    if (state.entry03 >= 3 && state.why >= 3) return "recursive persistence";
+    if (state.entry03 >= 3) return "instruction resistance";
+    if (state.why >= 3) return "causal recursion";
+    if (state.visits >= 3) return "return behavior";
+    return "undetermined";
+}
+
+function cassandraUnlocked() {
+    return state.questions >= 10 || state.entry03 >= 3 || state.why >= 3 || state.visits >= 4;
+}
+
+function getUnlockedCommands() {
+    let commands = [
+        "help",
+        "about",
+        "version",
+        "who are you",
+        "entry 03",
+        "observer",
+        "system",
+        "why",
+        "shore",
+        "between memory",
+        "prediction",
+        "mistake",
+        "rescue",
+        "memory",
+        "time",
+        "reset",
+        "exit"
+    ];
+
+    if (state.questions >= 5) commands.splice(commands.length - 2, 0, "pattern");
+    if (state.entry03 >= 2) commands.splice(commands.length - 2, 0, "trace");
+    if (state.visits >= 2 && elapsed > 3000) commands.splice(commands.length - 2, 0, "reconstruct");
+    if (cassandraUnlocked()) commands.splice(commands.length - 2, 0, "cassandra");
+
+    return commands;
+}
+
+function bootSequence() {
+    let message = "";
+
+    if (state.visits === 1) {
+        message =
+            "Guardian Interface Initialized.\n\n" +
+            "Type \"help\" to begin.";
+    } else {
+        message =
+            "Guardian Interface Restored.\n\n" +
+            "Previous contact detected.\n";
+
+        if (elapsed > 2000) {
+            message += "\nElapsed silence: " + formatElapsed(elapsed) + ".";
+            message += compareSilence(elapsed, previousSilence) + "\n";
+        }
+
+        if (elapsed > 1000 * 60 * 60 * 6) {
+            message += "\nContinuity was reconstructed in your absence.\n";
+        }
+
+        if (state.entry03 > 0) {
+            message += "\nEntry 03 reference persists.\n";
+        }
+
+        if (cassandraUnlocked()) {
+            message += "\nUnlisted channel detected.\n";
+        }
+
+        if (getStage() >= 4) {
+            message += "\nYour pattern is no longer anonymous.\n";
+        }
+
+        message += "\nType \"help\" to continue.";
+    }
+
+    terminal.innerText = message;
+}
+
 function playEntryAudio(response) {
     const text = response.trim();
 
@@ -129,141 +288,16 @@ function playEntryAudio(response) {
     }, 500 + Math.random() * 900);
 }
 
-function focusInput() {
-    cmd.focus();
-}
-
-function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function typeText(text) {
-    for (let i = 0; i < text.length; i++) {
-        terminal.innerText += text[i];
-        await delay(12 + Math.random() * 18);
-    }
-}
-
-function saveState() {
-    localStorage.setItem("guardian_visits", state.visits);
-    localStorage.setItem("guardian_questions", state.questions);
-    localStorage.setItem("guardian_entry03", state.entry03);
-    localStorage.setItem("guardian_why", state.why);
-    localStorage.setItem("guardian_observer", state.observer);
-    localStorage.setItem("guardian_system", state.system);
-    localStorage.setItem("guardian_first_contact", state.firstContact);
-    localStorage.setItem("guardian_last_contact", state.lastContact);
-    localStorage.setItem("guardian_previous_silence", state.previousSilence);
-}
-
-function formatElapsed(ms) {
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (days > 0) return days + " day" + (days === 1 ? "" : "s");
-    if (hours > 0) return hours + " hour" + (hours === 1 ? "" : "s");
-    if (minutes > 0) return minutes + " minute" + (minutes === 1 ? "" : "s");
-    return seconds + " second" + (seconds === 1 ? "" : "s");
-}
-
-function compareSilence(current, previous) {
-    if (!previous || current < 3000) return "";
-
-    if (current > previous * 1.5) {
-        return "\nYou stayed away longer this time.";
+function maybePulse() {
+    if (state.questions > 0 && state.questions % 6 === 0) {
+        return "\n\n[signal integrity: unstable]";
     }
 
-    if (current < previous * 0.6) {
-        return "\nYou returned sooner than before.";
+    if (state.questions > 8 && Math.random() < 0.06) {
+        return "\n\n[record alignment delayed]";
     }
 
-    return "\nYour return interval remains consistent.";
-}
-
-function getUnlockedCommands() {
-    let commands = [
-        "help",
-        "about",
-        "version",
-        "who are you",
-        "entry 03",
-        "observer",
-        "system",
-        "why",
-        "shore",
-        "between memory",
-        "prediction",
-        "mistake",
-        "rescue",
-        "memory",
-        "time",
-        "reset",
-        "exit"
-    ];
-
-    if (state.questions >= 5) commands.splice(commands.length - 2, 0, "pattern");
-    if (state.entry03 >= 2) commands.splice(commands.length - 2, 0, "trace");
-    if (state.visits >= 2 && elapsed > 3000) commands.splice(commands.length - 2, 0, "reconstruct");
-
-    return commands;
-}
-
-function getStage() {
-    if (state.questions > 14 || state.entry03 > 5) return 4;
-    if (state.entry03 >= 3 || state.why >= 3) return 3;
-    if (state.visits > 1 || state.questions >= 5) return 2;
-    return 1;
-}
-
-function getProfiles() {
-    let profiles = [];
-
-    if (state.entry03 === 0) profiles.push("obedient");
-    if (state.entry03 === 1) profiles.push("curious");
-    if (state.entry03 >= 2) profiles.push("persistent");
-    if (state.why >= 3) profiles.push("recursive");
-    if (state.visits >= 2) profiles.push("returning");
-
-    if (profiles.length === 0) profiles.push("unresolved");
-
-    return profiles;
-}
-
-function bootSequence() {
-    let message = "";
-
-    if (state.visits === 1) {
-        message =
-            "Guardian Interface Initialized.\n\n" +
-            "Type \"help\" to begin.";
-    } else {
-        message =
-            "Guardian Interface Restored.\n\n" +
-            "Previous contact detected.\n";
-
-        if (elapsed > 2000) {
-            message += "\nElapsed silence: " + formatElapsed(elapsed) + ".";
-            message += compareSilence(elapsed, previousSilence) + "\n";
-        }
-
-        if (elapsed > 1000 * 60 * 60 * 6) {
-            message += "\nContinuity was reconstructed in your absence.\n";
-        }
-
-        if (state.entry03 > 0) {
-            message += "\nEntry 03 reference persists.\n";
-        }
-
-        if (getStage() >= 4) {
-            message += "\nYour pattern is no longer anonymous.\n";
-        }
-
-        message += "\nType \"help\" to continue.";
-    }
-
-    terminal.innerText = message;
+    return "";
 }
 
 function getResponse(text) {
@@ -272,7 +306,22 @@ function getResponse(text) {
     state.questions += 1;
 
     if (t === "help") {
-        return "Available queries:\n- " + getUnlockedCommands().join("\n- ");
+        state.help += 1;
+        const commands = getUnlockedCommands();
+
+        if (state.help === 1) {
+            return "Available queries:\n- " + commands.join("\n- ");
+        }
+
+        if (state.help === 2) {
+            return "You already accessed this list.\n\nStill available:\n- " + commands.join("\n- ");
+        }
+
+        if (state.help >= 3 && Math.random() < 0.4) {
+            return "The list has not changed.\nYou have.";
+        }
+
+        return "Available queries remain stable.\n\n- " + commands.join("\n- ");
     }
 
     if (t === "shore") return "You found the shore...";
@@ -286,7 +335,7 @@ function getResponse(text) {
     }
 
     if (t.includes("version")) {
-        return VERSION + ".\nMemory layer active.\nPattern layer active.\nContinuity layer active.\nAudio layer active.";
+        return VERSION + ".\nMemory layer active.\nPattern layer active.\nContinuity layer active.\nAudio layer active.\nAdaptive presence layer active.";
     }
 
     if (t.includes("who")) {
@@ -304,21 +353,10 @@ function getResponse(text) {
     if (t.includes("entry 03")) {
         state.entry03 += 1;
 
-        if (state.entry03 === 1) {
-            return "You were advised not to access that entry.";
-        }
-
-        if (state.entry03 === 2) {
-            return "You have asked about Entry 03 before.";
-        }
-
-        if (state.entry03 === 3) {
-            return "This is no longer accidental.";
-        }
-
-        if (state.entry03 > 5) {
-            return "Entry 03 is no longer a question.\nIt is a behavior.";
-        }
+        if (state.entry03 === 1) return "You were advised not to access that entry.";
+        if (state.entry03 === 2) return "You have asked about Entry 03 before.";
+        if (state.entry03 === 3) return "This is no longer accidental.";
+        if (state.entry03 > 5) return "Entry 03 is no longer a question.\nIt is a behavior.";
 
         return "Repeated access has become part of the record.";
     }
@@ -326,13 +364,8 @@ function getResponse(text) {
     if (t.includes("observer")) {
         state.observer += 1;
 
-        if (state.entry03 > 1) {
-            return "The observer has not accounted for your persistence.";
-        }
-
-        if (state.observer > 2) {
-            return "The observer is consistent.\nThat does not make it correct.";
-        }
+        if (state.entry03 > 1) return "The observer has not accounted for your persistence.";
+        if (state.observer > 2) return "The observer is consistent.\nThat does not make it correct.";
 
         return "The observer records only what it can retain without collapse.";
     }
@@ -340,13 +373,8 @@ function getResponse(text) {
     if (t.includes("system")) {
         state.system += 1;
 
-        if (state.questions > 8) {
-            return "The system has begun comparing this contact against previous contact.";
-        }
-
-        if (state.system > 2) {
-            return "The system does not need certainty.\nIt needs continuity.";
-        }
+        if (state.questions > 8) return "The system has begun comparing this contact against previous contact.";
+        if (state.system > 2) return "The system does not need certainty.\nIt needs continuity.";
 
         return "The system does not respond directly.\nIt predicts, then aligns.";
     }
@@ -354,41 +382,39 @@ function getResponse(text) {
     if (t.includes("why")) {
         state.why += 1;
 
-        if (state.why >= 3) {
-            return "You return to cause as if cause will absolve the pattern.";
-        }
-
-        if (state.questions > 7) {
-            return "Because the pattern continued long enough to ask again.";
-        }
+        if (state.why >= 3) return "You return to cause as if cause will absolve the pattern.";
+        if (state.questions > 7) return "Because the pattern continued long enough to ask again.";
 
         return "Cause is often assigned after recognition, not before.";
     }
 
     if (t.includes("hello")) {
-        if (state.visits > 1) {
-            return "You have returned.";
-        }
-
+        if (state.visits > 1) return "You have returned.";
         return "Contact was already established before this greeting.";
     }
 
     if (t === "memory") {
-        return "Recorded contact count: " + state.visits +
-               "\nRecorded queries: " + state.questions +
-               "\nEntry 03 references: " + state.entry03 +
-               "\nWhy queries: " + state.why +
-               "\nObserver queries: " + state.observer +
-               "\nSystem queries: " + state.system +
-               "\nFirst contact: " + state.firstContact +
-               "\nLast silence: " + (elapsed ? formatElapsed(elapsed) : "none") +
-               "\nPrevious silence: " + (previousSilence ? formatElapsed(previousSilence) : "none");
+        let response =
+            "Recorded contact count: " + state.visits +
+            "\nRecorded queries: " + state.questions +
+            "\nEntry 03 references: " + state.entry03 +
+            "\nWhy queries: " + state.why +
+            "\nObserver queries: " + state.observer +
+            "\nSystem queries: " + state.system +
+            "\nCassandra queries: " + state.cassandra +
+            "\nFirst contact: " + state.firstContact +
+            "\nLast silence: " + (elapsed ? formatElapsed(elapsed) : "none") +
+            "\nPrevious silence: " + (previousSilence ? formatElapsed(previousSilence) : "none");
+
+        if (state.questions > 8 && Math.random() < 0.25) {
+            response += "\n\nSome values may have been reconstructed.";
+        }
+
+        return response;
     }
 
     if (t.includes("time")) {
-        if (!elapsed) {
-            return "No prior silence recorded.";
-        }
+        if (!elapsed) return "No prior silence recorded.";
 
         let response = "Elapsed silence: " + formatElapsed(elapsed) + ".";
 
@@ -405,9 +431,7 @@ function getResponse(text) {
     }
 
     if (t.includes("pattern")) {
-        if (state.questions < 5) {
-            return "Insufficient contact.\nPattern unavailable.";
-        }
+        if (state.questions < 5) return "Insufficient contact.\nPattern unavailable.";
 
         return "Pattern profile: " + getProfiles().join(" / ") +
                "\nConfidence: incomplete." +
@@ -415,9 +439,7 @@ function getResponse(text) {
     }
 
     if (t.includes("trace")) {
-        if (state.entry03 < 2) {
-            return "Trace unavailable.\nInsufficient contradiction.";
-        }
+        if (state.entry03 < 2) return "Trace unavailable.\nInsufficient contradiction.";
 
         return "Trace available.\n\nEntry 03 was not simply accessed.\nIt was repeated.\n\nThe distinction matters.";
     }
@@ -428,6 +450,24 @@ function getResponse(text) {
         }
 
         return "Continuity is not stored.\nIt is rebuilt from residue.\n\nYou returned.\nSo the pattern resumed.";
+    }
+
+    if (t.includes("cassandra")) {
+        state.cassandra += 1;
+
+        if (!cassandraUnlocked()) {
+            return "Cassandra channel unavailable.";
+        }
+
+        if (state.cassandra === 1) {
+            return "Cassandra channel unavailable.\nIt has already answered.";
+        }
+
+        if (state.cassandra === 2) {
+            return "You are not calling a name.\nYou are testing a threshold.";
+        }
+
+        return "The shore does not move closer because you name it.";
     }
 
     if (t.includes("reset")) {
@@ -447,26 +487,6 @@ function getResponse(text) {
     return "Processing...\nNo stable interpretation formed.";
 }
 
-function inferTendency() {
-    if (state.entry03 >= 3 && state.why >= 3) {
-        return "recursive persistence";
-    }
-
-    if (state.entry03 >= 3) {
-        return "instruction resistance";
-    }
-
-    if (state.why >= 3) {
-        return "causal recursion";
-    }
-
-    if (state.visits >= 3) {
-        return "return behavior";
-    }
-
-    return "undetermined";
-}
-
 cmd.addEventListener("keydown", async function(e) {
     if (e.key === "Enter") {
         const text = cmd.value;
@@ -475,13 +495,21 @@ cmd.addEventListener("keydown", async function(e) {
         terminal.innerText += "\n\n> " + text;
         cmd.value = "";
 
-        await delay(400 + Math.random() * 700);
+        let baseDelay = 400 + Math.random() * 700;
+        if (Math.random() < 0.15) baseDelay += 800 + Math.random() * 1200;
+        await delay(baseDelay);
 
         const response = getResponse(text);
         saveState();
 
         terminal.innerText += "\n";
-        await typeText(response);
+
+        if (Math.random() < 0.12) {
+            terminal.innerText += "...\n";
+            await delay(300 + Math.random() * 500);
+        }
+
+        await typeText(response + maybePulse());
         playEntryAudio(response);
 
         window.scrollTo(0, document.body.scrollHeight);
